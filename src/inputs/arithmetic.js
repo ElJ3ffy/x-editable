@@ -1,21 +1,26 @@
 /**
-@class arithmetic
-@extends text
-@final
-@example
-<a href="#" id="quantity" data-type="arithmetic" data-inputField="quantity_input" data-pk="1">666</a>
-<input type="text" name="quantity_input">
-<input type="number" name="quantity">
+ @class arithmetic
+ @extends text
+ @final
+ @example
+ <a href="#" id="quantity" data-value="1.00:1.00" data-type="arithmetic" data-pk="867" class="editable">1</a>
 
-<script>
-$('.editable').editable(
-    {
+ <script>
+ $('.editable').editable(
+ {
         showbuttons: false,
         clear: false,
         value: {
             quantity: "0",
             quantity_input: "0"
         },
+        params: function (params) {
+                let data = params.value;
+                data.id = params.pk;
+                data._method = "POST";
+                data._csrfToken = document.forms[0]._csrfToken.value;
+                return data;
+            },
         display: function(value) {
             if(!value) {
                 $(this).empty();
@@ -25,11 +30,10 @@ $('.editable').editable(
             $(this).html(html);
         }
     }
-);
-</script>
-**/
-
-(function ($) {
+ );
+ </script>
+ **/
+ (function ($) {
     "use strict";
     var Arithmetic = function (options) {
         this.init('arithmetic', options, Arithmetic.defaults);
@@ -57,7 +61,7 @@ $('.editable').editable(
         },
 
         html2value: function(html) {
-            return null;
+            return this.str2value(html);
         },
 
         /**
@@ -82,18 +86,39 @@ $('.editable').editable(
          @method str2value(str)
         */
         str2value: function(str) {
+            var strArr = [];
+            var val;
             /*
             this is mainly for parsing value defined in data-value attribute.
             If you will always set value by javascript, no need to overwrite it
             */
-            return str;
+            if(typeof str === 'string' ) {
+                strArr = str.split(':');
+                if(strArr.length > 1) {
+                    val = {
+                        quantity: strArr[0],
+                        quantity_input: strArr[1]
+                    };
+                } else {
+                    val = {
+                        quantity: strArr[0],
+                        quantity_input: strArr[0]
+                    };
+                }
+            } else {
+                val = {
+                    quantity: str.quantity,
+                    quantity_input: str.quantity_input
+                };
+            }
+            return val;
         },
 
         /**
          Sets value of input.
 
         @method value2input(value)
-        @param {mixed} value
+        @param {any} value
         **/
         value2input: function(value) {
             if(!value) {
@@ -109,10 +134,11 @@ $('.editable').editable(
         @method input2value()
         **/
         input2value: function() {
-            let quantityInput;
-            quantityInput = this.$input.filter('[name="quantity_input"]').val();
+            var quantityInput = this.$input.filter('[name="quantity_input"]').val();
+            var quantityValue = this.evaluateInput(quantityInput);
+            var isFloat = /[.]/.test(quantityValue);
             return {
-                quantity: parseFloat(this.evaluateInput(quantityInput)).toFixed(2),
+                quantity: (isFloat) ? parseFloat(this.evaluateInput(quantityInput)).toFixed(2) : quantityValue,
                 quantity_input: quantityInput
             };
         },
@@ -130,7 +156,7 @@ $('.editable').editable(
             const isNotNumeric = /[a-zA-Z$&+,:;=?@#|'<>.^*()%!-\/\\]/.test(input);
             const isExpression = /[+-^*()%\/]/.test(input);
             const notValid = /[a-zA-Z$&,:;?@#=|'<>!\\]/.test(input);
-            let result;
+            var result;
             if (isNotNumeric && isExpression && !notValid) {
                 try {
                     if (typeof(math) === 'object') {
@@ -148,13 +174,7 @@ $('.editable').editable(
         }
     });
     Arithmetic.defaults = $.extend({}, $.fn.editabletypes.text.defaults, {
-        /**
-        @property tpl
-        **/
-        tpl:'<div class="editable-arithmetic">' + 
-            '<input type="text" name="quantity_input" class="input-small">' +
-            '<input type="hidden" name="quantity">' +
-            '</div>'
+        tpl: '<div class="editable-arithmetic"><input type="text" name="quantity_input"><input type="hidden" name="quantity"></div>'
     });
     $.fn.editabletypes.arithmetic = Arithmetic;
 }(window.jQuery));
